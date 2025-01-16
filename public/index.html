@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cross-Post to Social Media</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+</head>
+<body>
+    <h1>MultiPost</h1>
+    
+    <div class="auth-section">
+        <h2>Connect Your Accounts</h2>
+        
+        <div class="platform-card">
+            <div>
+                <h3>Bluesky</h3>
+                <span id="blueskyStatus" class="platform-status disconnected">Nepřipojeno</span>
+                <div id="blueskyUserInfo" class="user-info"></div>
+            </div>
+            <div id="blueskyAuth" class="auth-fields" style="display: none;">
+                <input type="text" id="blueskyIdentifier" placeholder="Email nebo přezdívka">
+                <input type="password" id="blueskyPassword" placeholder="App heslo">
+                <button onclick="connectBluesky()">Připojit</button>
+            </div>
+            <div>
+                <button onclick="toggleAuth('bluesky')" id="blueskyConnectBtn">Připojit Bluesky</button>
+                <button onclick="disconnectBluesky()" id="blueskyDisconnectBtn" style="display: none;">Odpojit</button>
+            </div>
+        </div>
+
+        <div class="platform-card">
+            <div>
+                <h3>Nostr</h3>
+                <span id="nostrStatus" class="platform-status disconnected">Nepřipojeno</span>
+                <div id="nostrUserInfo" class="user-info"></div>
+            </div>
+            <div id="nostrAuth" class="auth-fields" style="display: none;">
+                <div class="input-group">
+                    <input type="text" id="nostrPrivateKey" placeholder="Váš Nostr privátní klíč (nsec...)">
+                    <div class="tooltip">
+                        <i class="fas fa-question-circle"></i>
+                        <span class="tooltiptext">Váš Nostr privátní klíč (nsec...) je potřebný pro přístup k Primalu. Najdete ho v nastavení Primalu nebo jiného Nostr klienta. Nikdy tento klíč s nikým nesdílejte!</span>
+                    </div>
+                </div>
+                <button onclick="connectNostr()">Připojit</button>
+            </div>
+            <div>
+                <button onclick="toggleAuth('nostr')" id="nostrConnectBtn">Připojit Nostr</button>
+                <button onclick="disconnectNostr()" id="nostrDisconnectBtn" style="display: none;">Odpojit</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-section">
+        <h2>Vytvořit příspěvek</h2>
+        <textarea id="postContent" placeholder="Co máte na mysli?"></textarea>
+        <div class="button-group">
+            <button onclick="createPost()" id="postButton">Odeslat na připojené platformy</button>
+            <button onclick="saveDraft()" id="saveButton">Uložit koncept</button>
+            <button onclick="loadDraft()" id="loadButton">Načíst koncept</button>
+            <button onclick="window.location.href='/history.html'" class="secondary">Historie příspěvků</button>
+        </div>
+        <div id="postStatus" class="status"></div>
+    </div>
+
+    <footer class="footer">
+        <p>&copy; 2024 Jan Badík. Všechna práva vyhrazena.</p>
+    </footer>
+
+    <script src="https://unpkg.com/nostr-tools@1.17.0/lib/nostr.bundle.js"></script>
+    <script>
+        const API_URL = 'https://multipost.onrender.com';
+        
+        document.addEventListener('DOMContentLoaded', () => {  //checking jestli už je autentizováno
+            checkBlueskyAuth();
+            checkNostrAuth();
+        });
+
+        function toggleAuth(platform) {
+            const authDiv = document.getElementById(`${platform}Auth`);
+            authDiv.style.display = authDiv.style.display === 'block' ? 'none' : 'block';
+        }
+
+        function saveBlueskyAuth() {
+            const identifier = document.getElementById('blueskyIdentifier').value;
+            const password = document.getElementById('blueskyPassword').value;
+            
+            if (identifier && password) {
+                localStorage.setItem('blueskyAuth', JSON.stringify({
+                    identifier,
+                    password: btoa(password)
+                }));
+                checkBlueskyAuth();
+                toggleAuth('bluesky');
+            }
+        }
+
+        function checkBlueskyAuth() {
+            const auth = localStorage.getItem('blueskyAuth');
+            const status = document.getElementById('blueskyStatus');
+            const connectBtn = document.getElementById('blueskyConnectBtn');
+            const disconnectBtn = document.getElementById('blueskyDisconnectBtn');
+
+            if (auth) {
+                status.textContent = 'Connected';
+                status.classList.replace('disconnected', 'connected');
+                connectBtn.style.display = 'none';
+                disconnectBtn.style.display = 'inline-block';
+            } else {
+                status.textContent = 'Not connected';
+                status.classList.replace('connected', 'disconnected');
+                connectBtn.style.display = 'inline-block';
+                disconnectBtn.style.display = 'none';
+            }
+        }
+
+        function disconnectBluesky() {
+            localStorage.removeItem('blueskyAuth');
+            checkBlueskyAuth();
+        }
+
+        function generateNostrKey() {
+            const privateKey = nostr.generatePrivateKey();
+            const publicKey = nostr.getPublicKey(privateKey);
+            
+            document.getElementById('nostrPrivateKey').value = privateKey;
+            showStatus('New Nostr key pair generated! Make sure to save your private key securely.', 'success');
+        }
+
+        const PRIMAL_RELAY = 'wss://relay.primal.net'; 
+
+        async function postToNostr(content) {
+            const auth = JSON.parse(localStorage.getItem('nostrAuth'));
+            if (!auth) {
+                throw new Error('Nostr not connected');
+            }
+
+            
+            const event = {
+                kind: 1,  
+                pubkey: auth.publicKey,
+                created_at: Math.floor(Date.now() / 1000),
+                tags: [['client', 'multipost']],
+                content: content
+            };
+
+           
+            event.id = window.NostrTools.getEventHash(event);
+            event.sig = window.NostrTools.signEvent(event, auth.privateKey);
+
+           
+            try {
+                const socket = new WebSocket(PRIMAL_RELAY);
+                
+                await new Promise((resolve, reject) => {
+                    const timeout = setTimeout(() => {
+                        socket.close();
+                        reject(new Error('Posting timeout'));
+                    }, 5000);
+
+                    socket.onopen = () => {
+                        socket.send(JSON.stringify(['EVENT', event]));
+                    };
+
+                    socket.onmessage = (msg) => {
+                        const response = JSON.parse(msg.data);
+                        if (response[0] === 'OK' && response[1] === event.id) {
+                            clearTimeout(timeout);
+                            socket.close();
+                            resolve();
+                        }
+                    };
+
+                    socket.onerror = (err) => {
+                        clearTimeout(timeout);
+                        socket.close();
+                        reject(err);
+                    };
+                });
+
+                console.log('Successfully posted to Primal!');
+                return true;
+            } catch (error) {
+                console.error('Failed to post:', error);
+                throw new Error('Failed to post to Primal');
+            }
+        }
+
+        function checkNostrAuth() {
+            const auth = localStorage.getItem('nostrAuth');
+            const status = document.getElementById('nostrStatus');
+            const connectBtn = document.getElementById('nostrConnectBtn');
+            const disconnectBtn = document.getElementById('nostrDisconnectBtn');
+
+            if (auth) {
+                const { publicKey } = JSON.parse(auth);
+                status.textContent = `Connected (${publicKey.slice(0, 8)}...)`;
+                status.classList.replace('disconnected', 'connected');
+                connectBtn.style.display = 'none';
+                disconnectBtn.style.display = 'inline-block';
+            } else {
+                status.textContent = 'Not connected';
+                status.classList.replace('connected', 'disconnected');
+                connectBtn.style.display = 'inline-block';
+                disconnectBtn.style.display = 'none';
+            }
+        }
+
+        function disconnectNostr() {
+            localStorage.removeItem('nostrAuth');
+            checkNostrAuth();
+            document.getElementById('nostrUserInfo').innerHTML = '';
+            showStatus('Disconnected from Nostr', 'success');
+        }
+
+    
+        function getPrimalUrl(publicKey) {
+            return `https://primal.net/p/${publicKey}`;
+        }
+
+       
+        function connectNostr() {
+            if (typeof window.NostrTools === 'undefined') {
+                showStatus('Error: Nostr library not loaded. Please refresh the page.', 'error');
+                return;
+            }
+
+            let privateKey = document.getElementById('nostrPrivateKey').value.trim();
+            
+            if (!privateKey) {
+                showStatus('Please enter your Nostr private key', 'error');
+                return;
+            }
+
+            try {
+                                                                //řešení pro nefungující nostr klíče
+                if (privateKey.startsWith('nsec')) {
+                    const decoded = window.NostrTools.nip19.decode(privateKey);
+                    privateKey = decoded.data;
+                }
+
+                const publicKey = window.NostrTools.getPublicKey(privateKey);
+                
+                localStorage.setItem('nostrAuth', JSON.stringify({
+                    privateKey: privateKey,
+                    publicKey: publicKey
+                }));
+                
+                checkNostrAuth();
+                toggleAuth('nostr');
+
+                const userInfo = document.getElementById('nostrUserInfo');
+                userInfo.innerHTML = `
+                    <p>Your Primal profile: 
+                        <a href="https://primal.net/p/${publicKey}" target="_blank">View on Primal</a>
+                    </p>
+                `;
+
+                showStatus('Successfully connected!', 'success');
+            } catch (error) {
+                console.error('Connection error:', error);
+                showStatus('Invalid private key. Please check your key and try again.', 'error');
+            }
+        }
+
+        function saveDraft() {
+            const content = document.getElementById('postContent').value;
+            localStorage.setItem('draftPost', content);
+            showStatus('Draft saved!', 'success');
+        }
+
+        function loadDraft() {
+            const savedContent = localStorage.getItem('draftPost');
+            if (savedContent) {
+                document.getElementById('postContent').value = savedContent;
+                showStatus('Draft loaded!', 'success');
+            } else {
+                showStatus('No draft found', 'error');
+            }
+        }
+
+        async function postToBluesky(content, auth) {
+            const response = await fetch(`${API_URL}/api/post/bluesky`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    identifier: auth.identifier,
+                    password: auth.password,  // Already in base64
+                    content: content
+                })
+            });
+
+            const data = await response.json();
+            if (!data.success) {
+                throw new Error(data.message);
+            }
+        }
+
+        async function createPost() {
+            const postContent = document.getElementById('postContent').value;
+            const postButton = document.getElementById('postButton');
+            
+            if (!postContent) {
+                showStatus('Zadejte prosím obsah příspěvku.', 'error');
+                return;
+            }
+
+            postButton.disabled = true;
+            const platforms = [];
+            
+            try {
+                const blueskyAuth = JSON.parse(localStorage.getItem('blueskyAuth'));
+                if (blueskyAuth) {
+                    platforms.push('bluesky');
+                    await postToBluesky(postContent, blueskyAuth);
+                }
+
+                const nostrAuth = JSON.parse(localStorage.getItem('nostrAuth'));
+                if (nostrAuth) {
+                    platforms.push('nostr');
+                    await postToNostr(postContent);
+                }
+
+                saveToHistory(postContent, platforms);
+                showStatus('Úspěšně odesláno na připojené platformy!', 'success');
+                document.getElementById('postContent').value = '';
+            } catch (error) {
+                showStatus(`Chyba při odesílání: ${error.message}`, 'error');
+            } finally {
+                postButton.disabled = false;
+            }
+        }
+
+        function saveToHistory(content, platforms) {
+            const history = JSON.parse(localStorage.getItem('postHistory') || '[]');
+            const post = {
+                content: content,
+                platforms: platforms,
+                timestamp: new Date().toISOString(),
+                id: Date.now()
+            };
+            history.unshift(post);
+            localStorage.setItem('postHistory', JSON.stringify(history));
+        }
+
+        function showStatus(message, type) {
+            const statusDiv = $('#postStatus');
+            statusDiv
+                .text(message)
+                .attr('class', `status ${type}`)
+                .show();
+            
+            setTimeout(() => {
+                statusDiv.fadeOut();
+            }, 5000);
+        }
+
+        $(document).ready(function() {
+            checkBlueskyAuth();
+            checkNostrAuth();
+
+            $('#postButton').click(createPost);
+            $('#saveButton').click(saveDraft);
+            $('#loadButton').click(loadDraft);
+        });
+
+        async function connectBluesky() {
+            const identifier = document.getElementById('blueskyIdentifier').value;
+            const password = document.getElementById('blueskyPassword').value;
+            
+            if (!identifier || !password) {
+                showStatus('Zadejte prosím email/handle a heslo', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/api/post/bluesky`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        identifier: identifier,
+                        password: btoa(password),
+                        content: ''  // Empty test post
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    localStorage.setItem('blueskyAuth', JSON.stringify({
+                        identifier: identifier,
+                        password: btoa(password)
+                    }));
+                    
+                    checkBlueskyAuth();
+                    toggleAuth('bluesky');
+                    showStatus('Úspěšně připojeno k Bluesky!', 'success');
+                } else {
+                    throw new Error(data.message || 'Připojení k Bluesky selhalo');
+                }
+            } catch (error) {
+                console.error('Bluesky connection error:', error);
+                showStatus('Připojení k Bluesky selhalo. Zkontrolujte přihlašovací údaje.', 'error');
+            }
+        }
+    </script>
+</body>
+</html>
