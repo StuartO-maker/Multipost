@@ -37,6 +37,30 @@ app.post('/api/post/bluesky', async (req, res) => {
     }
 });
 
+app.post('/api/verify/bluesky', async (req, res) => {
+    try {
+        const { identifier, password } = req.body;
+        
+        const agent = new BskyAgent({
+            service: 'https://bsky.social'
+        });
+
+        // Only verify login without posting
+        await agent.login({
+            identifier: identifier,
+            password: atob(password)
+        });
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Bluesky verification error:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Failed to verify Bluesky credentials'
+        });
+    }
+});
+
 app.use((err, req, res, next) => {
     console.error(err.stack);
     res.status(500).json({
