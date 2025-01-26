@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cross-Post to Social Media</title>
+    <title>MultiPost</title>
     <link rel="icon" type="image/png" href="/favicon.png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/styles.css">
@@ -11,44 +11,52 @@
 </head>
 <body>
     <h1>MultiPost</h1>
-    
+
+    <div class="top-nav">
+        <button onclick="window.location.href='/history.html'" class="secondary">Historie příspěvků</button>
+    </div>
+
     <div class="auth-section">
         <h2>Connect Your Accounts</h2>
         
         <div class="platform-card">
-            <div>
-                <h3>Bluesky</h3>
-                <span id="blueskyStatus" class="platform-status disconnected">Nepřipojeno</span>
-                <div id="blueskyUserInfo" class="user-info"></div>
+            <div class="platform-content">
+                <div class="platform-header">
+                    <img src="/images/bluesky-logo.png" alt="Bluesky" class="platform-logo">
+                    <div>
+                        <h3>Bluesky</h3>
+                        <span id="blueskyStatus" class="platform-status disconnected">Nepřipojeno</span>
+                        <div id="blueskyUserInfo" class="user-info"></div>
+                    </div>
+                </div>
+                <div id="blueskyAuth" class="auth-fields" style="display: none;">
+                    <input type="text" id="blueskyIdentifier" placeholder="Email nebo přezdívka">
+                    <input type="password" id="blueskyPassword" placeholder="App heslo">
+                </div>
             </div>
-            <div id="blueskyAuth" class="auth-fields" style="display: none;">
-                <input type="text" id="blueskyIdentifier" placeholder="Email nebo přezdívka">
-                <input type="password" id="blueskyPassword" placeholder="App heslo">
-            </div>
-            <div>
-                <button onclick="handleBlueskyConnection()" id="blueskyConnectBtn">Připojit Bluesky</button>
-                <button onclick="disconnectBluesky()" id="blueskyDisconnectBtn" style="display: none;">Odpojit</button>
+            <div class="platform-buttons">
+                <button id="blueskyConnectBtn">Připojit Bluesky</button>
+                <button id="blueskyDisconnectBtn" style="display: none;">Odpojit</button>
             </div>
         </div>
 
         <div class="platform-card">
-            <div>
-                <h3>Nostr</h3>
-                <span id="nostrStatus" class="platform-status disconnected">Nepřipojeno</span>
-                <div id="nostrUserInfo" class="user-info"></div>
-            </div>
-            <div id="nostrAuth" class="auth-fields" style="display: none;">
-                <div class="input-group">
-                    <input type="text" id="nostrPrivateKey" placeholder="Váš Nostr privátní klíč (nsec...)">
-                    <div class="tooltip">
-                        <i class="fas fa-question-circle"></i>
-                        <span class="tooltiptext">Váš Nostr privátní klíč (nsec...) je potřebný pro přístup k Primalu. Najdete ho v nastavení Primalu v záložce Account.</span>
+            <div class="platform-content">
+                <div class="platform-header">
+                    <img src="/images/primal-logo.png" alt="Primal" class="platform-logo">
+                    <div>
+                        <h3>Primal</h3>
+                        <span id="nostrStatus" class="platform-status disconnected">Nepřipojeno</span>
+                        <div id="nostrUserInfo" class="user-info"></div>
                     </div>
                 </div>
+                <div id="primalAuth" class="auth-fields" style="display: none;">
+                    <input type="text" id="nostrPrivateKey" placeholder="Váš Primal privátní klíč (nsec...)">
+                </div>
             </div>
-            <div>
-                <button onclick="handleNostrConnection()" id="nostrConnectBtn">Připojit Nostr</button>
-                <button onclick="disconnectNostr()" id="nostrDisconnectBtn" style="display: none;">Odpojit</button>
+            <div class="platform-buttons">
+                <button id="primalConnectBtn">Připojit Primal</button>
+                <button id="primalDisconnectBtn" style="display: none;">Odpojit</button>
             </div>
         </div>
     </div>
@@ -64,7 +72,6 @@
         <div class="button-group">
             <button id="postButton">Odeslat na připojené platformy</button>
             <button id="saveButton">Uložit koncept</button>
-            <button onclick="window.location.href='/history.html'" class="secondary">Historie příspěvků</button>
         </div>
         <div id="postStatus" class="status"></div>
     </div>
@@ -106,11 +113,21 @@
             
             // Add character counter listener
             document.getElementById('postContent').addEventListener('input', updateCharCount);
+
+            // Make sure the disconnect button has its event listener
+            document.getElementById('primalDisconnectBtn').addEventListener('click', disconnectNostr);
+
+            document.getElementById('primalConnectBtn').addEventListener('click', handlePrimalConnection);
+
+            // Platform connection buttons
+            document.getElementById('blueskyConnectBtn').addEventListener('click', handleBlueskyConnection);
+            document.getElementById('blueskyDisconnectBtn').addEventListener('click', disconnectBluesky);
         });
 
         function toggleAuth(platform) {
             const authDiv = document.getElementById(`${platform}Auth`);
-            authDiv.style.display = authDiv.style.display === 'block' ? 'none' : 'block';
+            const isVisible = authDiv.style.display === 'block';
+            authDiv.style.display = isVisible ? 'none' : 'block';
         }
 
         function saveBlueskyAuth() {
@@ -222,17 +239,16 @@
         function checkNostrAuth() {
             const auth = localStorage.getItem('nostrAuth');
             const status = document.getElementById('nostrStatus');
-            const connectBtn = document.getElementById('nostrConnectBtn');
-            const disconnectBtn = document.getElementById('nostrDisconnectBtn');
+            const connectBtn = document.getElementById('primalConnectBtn');
+            const disconnectBtn = document.getElementById('primalDisconnectBtn');
 
             if (auth) {
-                const { publicKey } = JSON.parse(auth);
-                status.textContent = `Connected (${publicKey.slice(0, 8)}...)`;
+                status.textContent = 'Připojeno';  // Simplified status text
                 status.classList.replace('disconnected', 'connected');
                 connectBtn.style.display = 'none';
                 disconnectBtn.style.display = 'inline-block';
             } else {
-                status.textContent = 'Not connected';
+                status.textContent = 'Nepřipojeno';
                 status.classList.replace('connected', 'disconnected');
                 connectBtn.style.display = 'inline-block';
                 disconnectBtn.style.display = 'none';
@@ -242,9 +258,10 @@
 
         function disconnectNostr() {
             localStorage.removeItem('nostrAuth');
-            checkNostrAuth();
+            document.getElementById('nostrPrivateKey').value = '';
             document.getElementById('nostrUserInfo').innerHTML = '';
-            showStatus('Disconnected from Nostr', 'success');
+            checkNostrAuth();
+            showStatus('Odpojeno od Primalu', 'success');
         }
 
     
@@ -281,7 +298,7 @@
                 }));
                 
                 checkNostrAuth();
-                toggleAuth('nostr');
+                toggleAuth('primal');
 
                 const userInfo = document.getElementById('nostrUserInfo');
                 userInfo.innerHTML = `
@@ -497,16 +514,14 @@
             }
         }
 
-        function handleNostrConnection() {
-            const authDiv = document.getElementById('nostrAuth');
+        function handlePrimalConnection() {
+            const authDiv = document.getElementById('primalAuth');
             const isVisible = authDiv.style.display === 'block';
             
             if (isVisible) {
-                // If auth fields are visible, try to connect
                 connectNostr();
             } else {
-                // If auth fields are hidden, show them
-                toggleAuth('nostr');
+                toggleAuth('primal');
             }
         }
 

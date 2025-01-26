@@ -52,11 +52,12 @@ h1 {
     padding: 1.5rem;
     margin: 1rem 0;
     border-radius: var(--border-radius);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
     background: var(--card-background);
     transition: all 0.2s ease;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1.5rem;
 }
 
 .platform-card:hover {
@@ -64,11 +65,25 @@ h1 {
     box-shadow: 0 0 0 1px var(--primary-color);
 }
 
+.platform-content {
+    flex: 1;
+}
+
+.platform-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
 .auth-fields {
-    background: #f9fafb;
-    padding: 1.5rem;
-    border-radius: var(--border-radius);
-    margin: 1rem 0;
+    margin-top: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.auth-fields input {
+    width: 100%;
 }
 
 input, textarea {
@@ -207,13 +222,14 @@ button.secondary:hover {
 
     .platform-card {
         flex-direction: column;
-        text-align: center;
-        gap: 1rem;
     }
-
-    button {
+    
+    .platform-buttons {
         width: 100%;
-        margin: 0.5rem 0;
+    }
+    
+    .platform-buttons button {
+        width: 100%;
     }
 
     h1 {
@@ -454,4 +470,22 @@ textarea {
         border-color: #475569;
         color: var(--text-primary);
     }
+}
+
+.platform-logo {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+}
+
+.platform-header {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.platform-card h3 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: var(--text-primary);
 }
