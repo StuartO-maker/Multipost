@@ -157,8 +157,6 @@
 
         function disconnectBluesky() { 
             localStorage.removeItem('blueskyAuth');
-            document.getElementById('blueskyIdentifier').value = '';
-            document.getElementById('blueskzPassword').value = '';
             checkBlueskyAuth();
         }
         const PRIMAL_RELAY = 'wss://relay.primal.net'; 
