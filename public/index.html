@@ -17,7 +17,7 @@
     </div>
 
     <div class="auth-section">
-        <h2>Connect Your Accounts</h2>
+        <h2>Propojení sociálních sítí</h2>
         
         <div class="platform-card">
             <div class="platform-content">
@@ -75,7 +75,6 @@
         </div>
         <div id="postStatus" class="status"></div>
     </div>
-
     <div class="drafts-section">
         <h2>Uložené koncepty</h2>
         <div class="drafts-container">
@@ -88,16 +87,16 @@
     </div>
 
     <footer class="footer">
-        <p>&copy; 2024 Jan Badík. Všechna práva vyhrazena.</p>
+        <p>&copy; 2024 Jan Badík</p>
     </footer>
 
     <script src="https://unpkg.com/nostr-tools@1.17.0/lib/nostr.bundle.js"></script>
     <script>
         const API_URL = window.location.hostname === 'multipost.onrender.com' 
-            ? 'https://multipost.onrender.com'  // Production
-            : '';  // Local development - empty string for same-origin requests
+            ? 'https://multipost.onrender.com'  
+            : '';  
 
-        console.log('API URL:', API_URL); // For debugging
+        console.log('API URL:', API_URL); 
         
         document.addEventListener('DOMContentLoaded', () => {  //checking jestli už je autentizováno
             checkBlueskyAuth();
@@ -105,58 +104,50 @@
             updatePostButtonState();
             updateDraftsList();
 
-            // Add event listeners
             document.getElementById('saveButton').addEventListener('click', saveDraft);
             document.getElementById('draftSelect').addEventListener('change', loadSelectedDraft);
             document.getElementById('deleteButton').addEventListener('click', deleteDraft);
             document.getElementById('deleteAllButton').addEventListener('click', deleteAllDrafts);
-            
-            // Add character counter listener
             document.getElementById('postContent').addEventListener('input', updateCharCount);
-
-            // Make sure the disconnect button has its event listener
             document.getElementById('primalDisconnectBtn').addEventListener('click', disconnectNostr);
-
             document.getElementById('primalConnectBtn').addEventListener('click', handlePrimalConnection);
-
-            // Platform connection buttons
             document.getElementById('blueskyConnectBtn').addEventListener('click', handleBlueskyConnection);
             document.getElementById('blueskyDisconnectBtn').addEventListener('click', disconnectBluesky);
         });
 
-        function toggleAuth(platform) {
+        function toggleAuth(platform) {          //vypínání a zapínání viditelnosti loginu
             const authDiv = document.getElementById(`${platform}Auth`);
             const isVisible = authDiv.style.display === 'block';
             authDiv.style.display = isVisible ? 'none' : 'block';
         }
 
-        function saveBlueskyAuth() {
+        function saveBlueskyAuth() { //získávaní a ukládání hodnot z loginu
             const identifier = document.getElementById('blueskyIdentifier').value;
             const password = document.getElementById('blueskyPassword').value;
             
-            if (identifier && password) {
+            if (identifier && password) { 
                 localStorage.setItem('blueskyAuth', JSON.stringify({
                     identifier,
-                    password: btoa(password)
+                    password: btoa(password) //kodování do base64
                 }));
                 checkBlueskyAuth();
                 toggleAuth('bluesky');
             }
         }
 
-        function checkBlueskyAuth() {
+        function checkBlueskyAuth() { //ziskavaní dat z locla storage
             const auth = localStorage.getItem('blueskyAuth');
             const status = document.getElementById('blueskyStatus');
             const connectBtn = document.getElementById('blueskyConnectBtn');
             const disconnectBtn = document.getElementById('blueskyDisconnectBtn');
 
             if (auth) {
-                status.textContent = 'Connected';
+                status.textContent = 'Připojeno';
                 status.classList.replace('disconnected', 'connected');
                 connectBtn.style.display = 'none';
                 disconnectBtn.style.display = 'inline-block';
             } else {
-                status.textContent = 'Not connected';
+                status.textContent = 'Nepřipojeno';
                 status.classList.replace('connected', 'disconnected');
                 connectBtn.style.display = 'inline-block';
                 disconnectBtn.style.display = 'none';
@@ -164,19 +155,12 @@
             updatePostButtonState();
         }
 
-        function disconnectBluesky() {
+        function disconnectBluesky() { 
             localStorage.removeItem('blueskyAuth');
+            document.getElementById('blueskyIdentifier').value = '';
+            document.getElementById('blueskzPassword').value = '';
             checkBlueskyAuth();
         }
-
-        function generateNostrKey() {
-            const privateKey = nostr.generatePrivateKey();
-            const publicKey = nostr.getPublicKey(privateKey);
-            
-            document.getElementById('nostrPrivateKey').value = privateKey;
-            showStatus('New Nostr key pair generated! Make sure to save your private key securely.', 'success');
-        }
-
         const PRIMAL_RELAY = 'wss://relay.primal.net'; 
 
         async function postToNostr(content) {
@@ -192,7 +176,7 @@
                 created_at: Math.floor(Date.now() / 1000),
                 tags: [['client', 'multipost']],
                 content: content
-            };
+            }; //tohle je vše podle návodu na API primal
 
            
             event.id = window.NostrTools.getEventHash(event);
@@ -205,7 +189,7 @@
                 await new Promise((resolve, reject) => {
                     const timeout = setTimeout(() => {
                         socket.close();
-                        reject(new Error('Posting timeout'));
+                        reject(new Error('Nespamuj!'));
                     }, 5000);
 
                     socket.onopen = () => {
@@ -243,7 +227,7 @@
             const disconnectBtn = document.getElementById('primalDisconnectBtn');
 
             if (auth) {
-                status.textContent = 'Připojeno';  // Simplified status text
+                status.textContent = 'Připojeno';  
                 status.classList.replace('disconnected', 'connected');
                 connectBtn.style.display = 'none';
                 disconnectBtn.style.display = 'inline-block';
@@ -263,12 +247,6 @@
             checkNostrAuth();
             showStatus('Odpojeno od Primalu', 'success');
         }
-
-    
-        function getPrimalUrl(publicKey) {
-            return `https://primal.net/p/${publicKey}`;
-        }
-
        
         function connectNostr() {
             if (typeof window.NostrTools === 'undefined') {
@@ -279,12 +257,11 @@
             let privateKey = document.getElementById('nostrPrivateKey').value.trim();
             
             if (!privateKey) {
-                showStatus('Please enter your Nostr private key', 'error');
+                showStatus('Prosím zadej svůj privátní Primal klíč', 'error');
                 return;
             }
 
-            try {
-                                                                //řešení pro nefungující nostr klíče
+            try {               //řešení pro nefungující nostr klíče prevadí private klíče do raw formy
                 if (privateKey.startsWith('nsec')) {
                     const decoded = window.NostrTools.nip19.decode(privateKey);
                     privateKey = decoded.data;
@@ -301,16 +278,11 @@
                 toggleAuth('primal');
 
                 const userInfo = document.getElementById('nostrUserInfo');
-                userInfo.innerHTML = `
-                    <p>Your Primal profile: 
-                        <a href="https://primal.net/p/${publicKey}" target="_blank">View on Primal</a>
-                    </p>
-                `;
 
-                showStatus('Successfully connected!', 'success');
+                showStatus('Úspěšně připojeno!', 'success');
             } catch (error) {
                 console.error('Connection error:', error);
-                showStatus('Invalid private key. Please check your key and try again.', 'error');
+                showStatus('Neexistující klíč. Prosím zkontroluj správnost.', 'error');
             }
         }
 
@@ -376,7 +348,7 @@
                 },
                 body: JSON.stringify({
                     identifier: auth.identifier,
-                    password: auth.password,  // Already in base64
+                    password: auth.password,  
                     content: content
                 })
             });
@@ -391,7 +363,6 @@
             const postContent = document.getElementById('postContent').value;
             const postButton = document.getElementById('postButton');
             
-            // Check if any platform is connected
             const blueskyAuth = JSON.parse(localStorage.getItem('blueskyAuth'));
             const nostrAuth = JSON.parse(localStorage.getItem('nostrAuth'));
             
@@ -434,10 +405,11 @@
             const post = {
                 content: content,
                 platforms: platforms,
-                timestamp: new Date().toISOString(),
-                id: Date.now()
+                timestamp: new Date().toISOString()
             };
+            
             history.unshift(post);
+            
             localStorage.setItem('postHistory', JSON.stringify(history));
         }
 
@@ -506,10 +478,8 @@
             const isVisible = authDiv.style.display === 'block';
             
             if (isVisible) {
-                // If auth fields are visible, try to connect
                 connectBluesky();
             } else {
-                // If auth fields are hidden, show them
                 toggleAuth('bluesky');
             }
         }
@@ -525,8 +495,7 @@
             }
         }
 
-        // Also let's update the button state whenever connection status changes
-        function updatePostButtonState() {
+        function updatePostButtonState() { //enable a disable na post tlačítku
             const blueskyAuth = JSON.parse(localStorage.getItem('blueskyAuth'));
             const nostrAuth = JSON.parse(localStorage.getItem('nostrAuth'));
             const postButton = document.getElementById('postButton');
@@ -544,12 +513,10 @@
             const drafts = JSON.parse(localStorage.getItem('drafts') || '[]');
             const select = document.getElementById('draftSelect');
             
-            // Clear current options except the first one
             while (select.options.length > 1) {
                 select.remove(1);
             }
             
-            // Add drafts to select
             drafts.forEach((draft, index) => {
                 const preview = draft.length > 30 ? draft.substring(0, 30) + '...' : draft;
                 const option = new Option(preview, index);
@@ -573,7 +540,7 @@
             const currentLength = textarea.value.length;
             charCount.textContent = currentLength;
             
-            // Optional: Change color when approaching limit
+            
             if (currentLength >= 280) {
                 charCount.classList.add('near-limit');
             } else {

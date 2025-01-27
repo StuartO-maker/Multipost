@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="cs">
 <head>
@@ -28,7 +29,7 @@
     </div>
 
     <footer class="footer">
-        <p>&copy; 2024 Jan Badík. Všechna práva vyhrazena.</p>
+        <p>&copy; 2024 Jan Badík</p>
     </footer>
 
     <script>
@@ -40,7 +41,7 @@
             const history = JSON.parse(localStorage.getItem('postHistory') || '[]');
             const historyList = $('#historyList');
             
-            if (history.length === 0) {
+            if (history.length === 0) {             //kontrola jestli je historie prázdná, pokud ano vypíše kontent do historyList
                 historyList.html(`
                     <div class="empty-state">
                         <i class="fas fa-history"></i>
@@ -52,7 +53,7 @@
 
             historyList.empty();
             
-            history.reverse().forEach(post => {
+            history.forEach(post => {
                 const date = new Date(post.timestamp).toLocaleString('cs-CZ', {
                     day: 'numeric',
                     month: 'long',

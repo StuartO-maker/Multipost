@@ -29,7 +29,7 @@ app.post('/api/post/bluesky', async (req, res) => {
 
         res.json({ success: true });
     } catch (error) {
-        console.error('Bluesky posting error:', error);
+        console.error('Chyba:', error);
         res.status(500).json({
             success: false,
             message: error.message || 'Failed to post to Bluesky'
@@ -45,7 +45,6 @@ app.post('/api/verify/bluesky', async (req, res) => {
             service: 'https://bsky.social'
         });
 
-        // Only verify login without posting
         await agent.login({
             identifier: identifier,
             password: atob(password)
